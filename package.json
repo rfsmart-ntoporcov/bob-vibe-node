@@ -1,0 +1,17 @@
+{
+  "name": "app",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "typecheck": "pnpm --recursive typecheck",
+    "build": "pnpm --recursive build",
+    "db:generate": "pnpm --filter backend db:generate",
+    "db:push": "pnpm --filter backend db:push"
+  }
+}

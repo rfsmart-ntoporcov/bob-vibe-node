@@ -1,0 +1,10 @@
+# Vite
+dist/
+.vite/
+
+# TanStack Router (auto-generated)
+src/routeTree.gen.ts
+
+# Node
+node_modules/
+*.log

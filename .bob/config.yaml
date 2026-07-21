@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=https://bob.ai.rfsmart.com/schema/config.schema.json
+
+# Bob dev-env wiring. This file was seeded from
+# rfs-internal/bob-template-node-pg-react — modify freely as your
+# project grows; the JSON Schema above powers IDE autocomplete/hover
+# docs.
+
+# ---- Lifecycle hooks ------------------------------------------------------
+# post_clone runs before install. Installs Postgres via dnf and brings
+# it up on 127.0.0.1:5432 (Bob's Firecracker VMs don't allow nested
+# virt — DECISIONS #008 in bob-vm, so no Docker). Node 22 is already
+# in Bob's base image, so we don't need to install a runtime here.
+hooks:
+  post_clone:
+    - .bob/hooks/post_clone.sh
+
+install: |
+  set -e
+  # Postgres is already up + database created by post_clone. Install
+  # both workspaces in one pass — pnpm handles the workspace graph.
+  pnpm install
+  # No separate migration step here; the backend runs its idempotent
+  # bootstrap migration on startup in Development mode (see
+  # backend/src/index.ts).
+
+start: |
+  # Concurrent backend + frontend. `&` backgrounds the backend so we
+  # can `exec` Vite in the foreground — Vite becomes PID 1 for Bob's
+  # port-probing / HMR heartbeat purposes.
+  #
+  # Backend uses `tsx watch` for hot-reload on TS edits (see
+  # backend/package.json). If the backend crashes, `set -e` won't
+  # catch a background process; the app iframe will surface tRPC
+  # errors in the browser console + the frontend's error UI.
+  pnpm --filter backend run dev &
+  exec pnpm --filter frontend run dev
+
+# Primary port Bob renders in the right panel — the frontend.
+port: 5173
+
+# Extra services Bob surfaces as sibling subdomains. The backend is
+# reachable inside the VM at http://127.0.0.1:5000 for the frontend's
+# Vite proxy; `services` here exposes it externally on
+# `<sessionId>-api.vm.bob.ai.rfsmart.com` for direct probing / debugging
+# (e.g. hitting the tRPC HTTP endpoints from a REST client).
+services:
+  api:
+    port: 5000
+
+env:
+  # Postgres connection string. `trust` auth is configured in the
+  # post_clone hook so the password is effectively ignored on
+  # localhost, but we ship one anyway so productionizing this stack
+  # later doesn't require a code change — just point DATABASE_URL at
+  # your real DB and enable password auth server-side.
+  # This database is ephemeral per-VM and only reachable from inside
+  # the VM. If you move to a real deployment, put this in `secrets`
+  # or your target's secret store.
+  DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/app"
+  # NODE_ENV drives auto-migrate on startup in backend/src/index.ts.
+  # Flip to "production" in your deploy pipeline to disable it.
+  NODE_ENV: development
+  # Backend HTTP port. Read by backend/src/index.ts; the value here
+  # must match `services.api.port` above.
+  PORT: "5000"
+  # Vite reads this at build/serve time to know where to proxy `/api`.
+  VITE_API_ORIGIN: http://127.0.0.1:5000
+
+# Auto-save the working tree to a persistence branch every N minutes
+# (DECISIONS #027 in bob-vm). Recommended on for greenfield projects
+# — you'll iterate rapidly and want the AI's work preserved across
+# restarts.
+persistence:
+  enabled: true
