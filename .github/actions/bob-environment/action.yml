@@ -1,0 +1,49 @@
+# Vendored from rfs-internal/ai-bob-vm/.github/actions/bob-environment at 1469772.
+# GitHub does not share private organization actions with personal-account repos.
+name: Bob disposable environment
+description: Launch, inspect, or terminate a repository-owned Bob preview using GitHub OIDC.
+inputs:
+  operation:
+    description: launch, get, or terminate
+    default: launch
+  environment-key:
+    description: Stable key within this repository, for example pr-123.
+    required: true
+  inactivity-timeout-minutes:
+    description: Minutes without inbound traffic before suspension (1-480). Termination follows 20 minutes later; total lifetime never exceeds 8 hours.
+    default: "240"
+  wait-timeout-minutes:
+    description: How long launch waits for all declared application services (1-30).
+    default: "12"
+  launcher-url:
+    description: Production or stage Bob launcher origin.
+    default: https://bob.ai.rfsmart.com
+outputs:
+  session-id:
+    description: The VM created or inspected by this run.
+    value: ${{ steps.environment.outputs.session-id }}
+  app-url:
+    description: Direct app URL. Use environment-url for human visits and proxy-token renewal.
+    value: ${{ steps.environment.outputs.app-url }}
+  environment-url:
+    description: Authenticated preview page with Edit with Bob and proxy-token renewal.
+    value: ${{ steps.environment.outputs.environment-url }}
+  edit-url:
+    description: Page offering a new personal session at the preview commit.
+    value: ${{ steps.environment.outputs.edit-url }}
+  status:
+    description: Bob environment status.
+    value: ${{ steps.environment.outputs.status }}
+runs:
+  using: composite
+  steps:
+    - id: environment
+      shell: bash
+      env:
+        BOB_ACTION_PATH: ${{ github.action_path }}
+        BOB_OPERATION: ${{ inputs.operation }}
+        BOB_ENVIRONMENT_KEY: ${{ inputs.environment-key }}
+        BOB_INACTIVITY_MINUTES: ${{ inputs.inactivity-timeout-minutes }}
+        BOB_WAIT_MINUTES: ${{ inputs.wait-timeout-minutes }}
+        BOB_LAUNCHER_URL: ${{ inputs.launcher-url }}
+      run: node "$BOB_ACTION_PATH/run.mjs"

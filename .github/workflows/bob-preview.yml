@@ -1,0 +1,66 @@
+name: Bob preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Launch or terminate the selected branch's preview
+        required: true
+        type: choice
+        options:
+          - launch
+          - terminate
+        default: launch
+      inactivity_minutes:
+        description: Minutes without traffic before suspension
+        required: true
+        type: choice
+        options:
+          - "30"
+          - "60"
+          - "240"
+        default: "60"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: bob-preview
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    name: ${{ inputs.operation }} Bob preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: bob-preview
+      url: ${{ steps.bob.outputs.environment-url }}
+    steps:
+      - name: Check out the selected branch
+        uses: actions/checkout@v4
+
+      - name: ${{ inputs.operation }} Bob environment
+        id: bob
+        uses: ./.github/actions/bob-environment
+        with:
+          operation: ${{ inputs.operation }}
+          environment-key: manual
+          inactivity-timeout-minutes: ${{ inputs.inactivity_minutes }}
+          wait-timeout-minutes: 15
+          launcher-url: https://bob-stage.ai.rfsmart.com
+
+      - name: Add preview links to the run summary
+        if: ${{ steps.bob.outputs.environment-url != '' }}
+        shell: bash
+        env:
+          ENVIRONMENT_URL: ${{ steps.bob.outputs.environment-url }}
+          EDIT_URL: ${{ steps.bob.outputs.edit-url }}
+        run: |
+          {
+            echo "## Bob preview"
+            echo
+            echo "- [Open preview](${ENVIRONMENT_URL})"
+            echo "- [Edit with Bob](${EDIT_URL})"
+          } >> "$GITHUB_STEP_SUMMARY"

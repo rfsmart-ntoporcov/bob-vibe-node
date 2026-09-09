@@ -48,6 +48,27 @@ To smoke-test a change without going through Bob's New Project UI:
 3. Boot a Bob session on the newly-created repo and confirm it makes it to the `ready` boot stage.
 4. Delete the throwaway repo.
 
+### Disposable Bob preview
+
+After this repository's **Bob preview** workflow is on `main`, open
+**Actions → Bob preview → Run workflow**, select the branch to test, and choose:
+
+- `launch` to boot that branch's exact commit in Bob stage;
+- `terminate` to stop the preview for that branch.
+
+This pilot intentionally keeps one `manual` preview per repository. Launching a
+different branch replaces the previous preview; `terminate` stops whichever
+branch is currently assigned to that slot.
+
+The run publishes an authenticated preview URL and an **Edit with Bob** link.
+The latter creates a separate personal Bob session at the preview commit; it
+does not modify or transfer the repository-owned preview VM.
+
+The Action is vendored under `.github/actions/bob-environment` because GitHub
+does not allow a private action in an organization-owned repository to be used
+directly by a personal-account repository. Its header records the upstream Bob
+commit to use when refreshing it.
+
 ## Related repos
 
 - [`bob-vm`](https://github.com/rfs-internal/bob-vm) — the launcher that generates new repos from this template.
